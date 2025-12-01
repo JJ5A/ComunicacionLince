@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "337784599756",
+    "project_id": "wats-clon",
+    "storage_bucket": "wats-clon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337784599756:android:099f612f604d8a4b7b3e69",
+        "android_client_info": {
+          "package_name": "com.comunicacionlince"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXHaMX6XPb0VrTjh91ylMZHSoVFHUa8vs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337784599756:android:4d2d13d1ab94b3d07b3e69",
+        "android_client_info": {
+          "package_name": "com.example.comunicacion_lince"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXHaMX6XPb0VrTjh91ylMZHSoVFHUa8vs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

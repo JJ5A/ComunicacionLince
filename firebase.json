@@ -1,0 +1,22 @@
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "wats-clon",
+                    "appId": "1:337784599756:android:099f612f604d8a4b7b3e69",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "wats-clon",
+                    "configurations": {
+                        "android": "1:337784599756:android:099f612f604d8a4b7b3e69",
+                        "ios": "1:337784599756:ios:ca6b936af8352ecf7b3e69"
+                    }
+                }
+            }
+        }
+    }
+}
