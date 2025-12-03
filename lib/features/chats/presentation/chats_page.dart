@@ -207,10 +207,10 @@ class _ChatsPageState extends ConsumerState<ChatsPage> {
         backgroundImage: isNetworkImage 
             ? NetworkImage(otherUser.avatarPath!) 
             : null,
+        backgroundColor: AppColors.brandSecondary.withValues(alpha: 0.12),
         child: !isNetworkImage 
             ? const Icon(Icons.person, color: AppColors.brandPrimary)
             : null,
-        backgroundColor: AppColors.brandSecondary.withValues(alpha: 0.12),
       );
     }
 

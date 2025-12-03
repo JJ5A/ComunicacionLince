@@ -232,8 +232,8 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
       return CircleAvatar(
         radius: 20,
         backgroundImage: isNetworkImage ? NetworkImage(otherUser.avatarPath!) : null,
-        child: !isNetworkImage ? const Icon(Icons.person, size: 20) : null,
         backgroundColor: Colors.white.withValues(alpha: 0.2),
+        child: !isNetworkImage ? const Icon(Icons.person, size: 20) : null,
       );
     }
 
