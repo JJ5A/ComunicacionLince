@@ -60,6 +60,19 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
     final messages = state.messages[conversation.id] ?? const <Message>[];
     final currentUser = state.currentUser;
 
+    // Obtener el título correcto basado en el otro participante para chats directos
+    String displayTitle = conversation.title;
+    if (!conversation.isGroup && currentUser != null) {
+      final otherUserId = conversation.participantIds.firstWhere(
+        (id) => id != currentUser.id,
+        orElse: () => conversation.participantIds.first,
+      );
+      final otherUserIndex = state.directory.indexWhere((user) => user.id == otherUserId);
+      if (otherUserIndex >= 0) {
+        displayTitle = state.directory[otherUserIndex].displayName;
+      }
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -71,7 +84,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(conversation.title),
+                  Text(displayTitle),
                   if (conversation.isGroup)
                     Text(
                       '${conversation.participantIds.length} integrantes',
@@ -86,11 +99,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
           IconButton(
             tooltip: 'Video llamada',
             icon: const Icon(Icons.videocam_outlined),
-            onPressed: () => _openVideoCall(conversation.title),
-          ),
-          IconButton(
-            icon: Icon(conversation.isMuted ? Icons.notifications_off : Icons.notifications_active_outlined),
-            onPressed: () => ref.read(appControllerProvider.notifier).toggleMute(conversation.id),
+            onPressed: () => _openVideoCall(displayTitle),
           ),
         ],
       ),
@@ -107,10 +116,8 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      final sender = state.directory.firstWhere(
-                        (user) => user.id == message.senderId,
-                        orElse: () => currentUser ?? state.directory.first,
-                      );
+                      final senderIndex = state.directory.indexWhere((user) => user.id == message.senderId);
+                      final sender = senderIndex >= 0 ? state.directory[senderIndex] : null;
                       final isMine = currentUser?.id == message.senderId;
                       return MessageBubble(
                         message: message,
@@ -151,6 +158,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
 
   void _openVideoCall(String title) {
     final agoraAppId = dotenv.env['AGORA_APP_ID'];
+    final token = dotenv.env['AGORA_TOKEN'] ?? dotenv.env['AGORA_TEMP_TOKEN'];
     
     if (agoraAppId == null || agoraAppId.isEmpty || agoraAppId == 'YOUR_AGORA_APP_ID_HERE') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -171,6 +179,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
           conversationTitle: title,
           channelName: conversation.id,
           agoraAppId: agoraAppId,
+          token: token,
         ),
       ),
     );
@@ -213,14 +222,12 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
       orElse: () => conversation.participantIds.first,
     );
 
-    final otherUser = appState.directory.firstWhere(
-      (user) => user.id == otherUserId,
-      orElse: () => appState.directory.first,
-    );
+    final int idx = appState.directory.indexWhere((user) => user.id == otherUserId);
+    final otherUser = idx >= 0 ? appState.directory[idx] : null;
 
-    if (otherUser.avatarPath != null && otherUser.avatarPath!.isNotEmpty) {
-      final isNetworkImage = otherUser.avatarPath!.startsWith('http://') || 
-                              otherUser.avatarPath!.startsWith('https://');
+    if (otherUser != null && otherUser.avatarPath != null && otherUser.avatarPath!.isNotEmpty) {
+      final isNetworkImage = otherUser.avatarPath!.startsWith('http://') ||
+          otherUser.avatarPath!.startsWith('https://');
       
       return CircleAvatar(
         radius: 20,
@@ -252,6 +259,18 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage> {
   }
 
   Future<void> _pickAnimation(String conversationId) async {
+    // Mostrar selector de GIFs predefinidos
+    final selectedGif = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => const _GifPickerBottomSheet(),
+    );
+    
+    if (selectedGif != null) {
+      _handleSend('GIF', MessageContentType.animation, selectedGif, conversationId);
+      return;
+    }
+    
+    // Si no seleccionó ninguno, ofrecer subir desde galería
     final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: <String>['gif']);
     final path = result?.files.single.path;
     if (path == null) return;
@@ -442,13 +461,145 @@ class _ComposerIconButton extends StatelessWidget {
         color: AppColors.brandPrimary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppRadius.sm),
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
           onTap: onPressed,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Icon(icon, color: AppColors.brandPrimary),
+            child: Icon(icon, size: 20, color: AppColors.brandPrimary),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _GifPickerBottomSheet extends StatelessWidget {
+  const _GifPickerBottomSheet();
+
+  // GIFs populares de Tenor/Giphy (URLs públicas)
+  static const List<Map<String, String>> _popularGifs = [
+    {
+      'url': 'https://media.giphy.com/media/3o7qDSOvfaCO9b3MlO/giphy.gif',
+      'label': '👍 Pulgar arriba',
+    },
+    {
+      'url': 'https://media.giphy.com/media/l0MYGb1LuZ3n7dRnO/giphy.gif',
+      'label': '😂 Risa',
+    },
+    {
+      'url': 'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif',
+      'label': '👏 Aplauso',
+    },
+    {
+      'url': 'https://media.giphy.com/media/g9582DNuQppxC/giphy.gif',
+      'label': '🎉 Celebración',
+    },
+    {
+      'url': 'https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif',
+      'label': '❤️ Corazón',
+    },
+    {
+      'url': 'https://media.giphy.com/media/KEYEpIngcmXlHetDqz/giphy.gif',
+      'label': '👋 Hola',
+    },
+    {
+      'url': 'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif',
+      'label': '😮 Sorpresa',
+    },
+    {
+      'url': 'https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif',
+      'label': '😴 Aburrido',
+    },
+    {
+      'url': 'https://media.giphy.com/media/26uf4r3EldfX5Ykqk/giphy.gif',
+      'label': '💪 Fuerza',
+    },
+    {
+      'url': 'https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif',
+      'label': '👀 Mirando',
+    },
+    {
+      'url': 'https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif',
+      'label': '🤔 Pensando',
+    },
+    {
+      'url': 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif',
+      'label': '🔥 Fuego',
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 400,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                const Icon(Icons.gif_box, color: AppColors.brandPrimary),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Selecciona un GIF',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: AppSpacing.sm,
+                mainAxisSpacing: AppSpacing.sm,
+                childAspectRatio: 1,
+              ),
+              itemCount: _popularGifs.length,
+              itemBuilder: (context, index) {
+                final gif = _popularGifs[index];
+                return GestureDetector(
+                  onTap: () => Navigator.of(context).pop(gif['url']),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: Image.network(
+                      gif['url']!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

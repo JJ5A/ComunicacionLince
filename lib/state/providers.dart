@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_controller.dart';
 import 'app_state.dart';
-import '../services/supabase_announcements_repository.dart';
 import '../services/supabase_contacts_repository.dart';
 import '../services/supabase_conversations_repository.dart';
 import '../services/supabase_messages_repository.dart';
@@ -49,11 +48,6 @@ final messagesRepositoryProvider = Provider<SupabaseMessagesRepository?>((ref) {
   return SupabaseMessagesRepository(client);
 });
 
-final announcementsRepositoryProvider = Provider<SupabaseAnnouncementsRepository?>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  if (client == null) return null;
-  return SupabaseAnnouncementsRepository(client);
-});
 
 final storageServiceProvider = Provider<SupabaseStorageService?>((ref) {
   final client = ref.watch(supabaseClientProvider);
@@ -69,7 +63,6 @@ final appControllerProvider = StateNotifierProvider<AppController, AppState>(
     contactsRepository: ref.watch(contactsRepositoryProvider),
     conversationsRepository: ref.watch(conversationsRepositoryProvider),
     messagesRepository: ref.watch(messagesRepositoryProvider),
-    announcementsRepository: ref.watch(announcementsRepositoryProvider),
     storageService: ref.watch(storageServiceProvider),
   ),
 );

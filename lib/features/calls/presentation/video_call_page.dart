@@ -42,7 +42,16 @@ class _VideoCallPageState extends State<VideoCallPage> {
   Future<void> _initializeAgora() async {
     try {
       // Solicitar permisos
-      await [Permission.microphone, Permission.camera].request();
+      final statuses = await [Permission.microphone, Permission.camera].request();
+      final micGranted = await Permission.microphone.isGranted;
+      final camGranted = await Permission.camera.isGranted;
+      if (!micGranted || !camGranted) {
+        setState(() {
+          _errorMessage = 'Permisos de micrófono y cámara son necesarios para la videollamada.';
+          _isLoading = false;
+        });
+        return;
+      }
 
       // Crear motor de Agora
       _engine = createAgoraRtcEngine();
@@ -83,8 +92,23 @@ class _VideoCallPageState extends State<VideoCallPage> {
             if (kDebugMode) {
               debugPrint('❌ Error de Agora: $err - $msg');
             }
+            String friendly = msg;
+            switch (err) {
+              case ErrorCodeType.errInvalidToken:
+                friendly = 'Token de Agora inválido. Configura AGORA_TOKEN o desactiva certificado.';
+                break;
+              case ErrorCodeType.errTokenExpired:
+                friendly = 'El token de Agora expiró. Genera uno nuevo para este canal.';
+                break;
+              case ErrorCodeType.errJoinChannelRejected:
+                friendly = 'Unión al canal rechazada. Verifica App ID/Token y canal.';
+                break;
+              default:
+                break;
+            }
             setState(() {
-              _errorMessage = 'Error: $msg';
+              _errorMessage = 'Error: $friendly';
+              _isLoading = false;
             });
           },
         ),
@@ -144,7 +168,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
 
   @override
   void dispose() {
-    _leaveChannel();
+    _engine?.leaveChannel();
+    _engine?.release();
     super.dispose();
   }
 

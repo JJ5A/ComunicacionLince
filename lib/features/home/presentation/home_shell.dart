@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../state/providers.dart';
 import '../../../theme/design_tokens.dart';
-import '../../announcements/presentation/announcements_page.dart';
 import '../../chats/presentation/chats_page.dart';
 import '../../contacts/presentation/contacts_page.dart';
 import '../../groups/presentation/groups_page.dart';
@@ -33,7 +32,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ChatsPage(),
       ContactsPage(),
       GroupsPage(),
-      AnnouncementsPage(),
       ProfilePage(),
     ];
 
@@ -60,7 +58,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
               NavigationDestination(icon: Icon(Icons.people_alt_outlined), label: 'Contactos'),
               NavigationDestination(icon: Icon(Icons.groups), label: 'Grupos'),
-              NavigationDestination(icon: Icon(Icons.campaign_outlined), label: 'Boletín'),
               NavigationDestination(icon: Icon(Icons.person_outline), label: 'Perfil'),
             ],
           ),

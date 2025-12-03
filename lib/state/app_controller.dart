@@ -7,11 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase hide User;
 import 'package:uuid/uuid.dart';
 
-import '../models/announcement.dart';
 import '../models/conversation.dart';
 import '../models/message.dart';
 import '../models/user_profile.dart';
-import '../services/supabase_announcements_repository.dart';
+import '../models/announcement.dart';
 import '../services/supabase_contacts_repository.dart';
 import '../services/supabase_conversations_repository.dart';
 import '../services/supabase_messages_repository.dart';
@@ -29,7 +28,6 @@ class AppController extends StateNotifier<AppState> {
     SupabaseContactsRepository? contactsRepository,
     SupabaseConversationsRepository? conversationsRepository,
     SupabaseMessagesRepository? messagesRepository,
-    SupabaseAnnouncementsRepository? announcementsRepository,
     SupabaseStorageService? storageService,
   })  : _auth = auth ?? FirebaseAuth.instance,
         _profileStore = profileStore,
@@ -38,7 +36,6 @@ class AppController extends StateNotifier<AppState> {
         _contactsRepository = contactsRepository,
         _conversationsRepository = conversationsRepository,
         _messagesRepository = messagesRepository,
-        _announcementsRepository = announcementsRepository,
         _storageService = storageService,
         super(AppState.initial()) {
     _authSubscription = _auth.authStateChanges().listen(_onAuthStateChanged);
@@ -52,14 +49,14 @@ class AppController extends StateNotifier<AppState> {
   final SupabaseContactsRepository? _contactsRepository;
   final SupabaseConversationsRepository? _conversationsRepository;
   final SupabaseMessagesRepository? _messagesRepository;
-  final SupabaseAnnouncementsRepository? _announcementsRepository;
+  // Announcements removed
   final SupabaseStorageService? _storageService;
   final _uuid = const Uuid();
   StreamSubscription<User?>? _authSubscription;
   supabase.RealtimeChannel? _messagesChannel;
   supabase.RealtimeChannel? _conversationsChannel;
   supabase.RealtimeChannel? _participantsChannel;
-  supabase.RealtimeChannel? _announcementsChannel;
+  // Announcements removed
   supabase.RealtimeChannel? _contactsChannel;
 
   Future<void> _loadRemoteData(UserProfile profile) async {
@@ -70,14 +67,13 @@ class AppController extends StateNotifier<AppState> {
       debugPrint('  - Contacts: ${_contactsRepository != null}');
       debugPrint('  - Conversations: ${_conversationsRepository != null}');
       debugPrint('  - Messages: ${_messagesRepository != null}');
-      debugPrint('  - Announcements: ${_announcementsRepository != null}');
+      // Announcements disabled
     }
     
     if (_profilesRepository == null ||
         _contactsRepository == null ||
         _conversationsRepository == null ||
-        _messagesRepository == null ||
-        _announcementsRepository == null) {
+        _messagesRepository == null) {
       if (kDebugMode) {
         debugPrint('⚠️ Algunos repositorios son null, saltando sincronización remota');
       }
@@ -103,10 +99,10 @@ class AppController extends StateNotifier<AppState> {
       final directoryFuture = _profilesRepository.fetchDirectory();
       final contactsFuture = _contactsRepository.fetchContacts(profile.id);
       final conversationsFuture = _conversationsRepository.fetchConversations(profile.id);
-      final announcementsFuture = _announcementsRepository.fetchAnnouncements();
+      // Announcements disabled
 
       final results = await Future.wait<dynamic>(
-        <Future<dynamic>>[directoryFuture, contactsFuture, conversationsFuture, announcementsFuture],
+        <Future<dynamic>>[directoryFuture, contactsFuture, conversationsFuture],
       );
       
       if (kDebugMode) {
@@ -114,13 +110,13 @@ class AppController extends StateNotifier<AppState> {
         debugPrint('  - Directory: ${(results[0] as List).length} perfiles');
         debugPrint('  - Contacts: ${(results[1] as List).length} contactos');
         debugPrint('  - Conversations: ${(results[2] as List).length} conversaciones');
-        debugPrint('  - Announcements: ${(results[3] as List).length} avisos');
+        // Announcements disabled
       }
 
       final fetchedDirectory = List<UserProfile>.from(results[0] as List<UserProfile>);
       final contacts = List<UserProfile>.from(results[1] as List<UserProfile>);
       final conversations = List<Conversation>.from(results[2] as List<Conversation>);
-      final announcements = List<Announcement>.from(results[3] as List<Announcement>);
+      final announcements = const <Announcement>[];
 
       final contactIds = contacts.map((contact) => contact.id).toList(growable: false);
       final updatedProfile = profile.copyWith(contactIds: contactIds);
@@ -406,11 +402,8 @@ class AppController extends StateNotifier<AppState> {
     }
     
     final updatedDirectory = List<UserProfile>.from(state.directory)..add(newUser);
-    final seeded = _withWelcomeConversations(newUser, updatedDirectory);
     state = state.copyWith(
       directory: updatedDirectory,
-      conversations: seeded.conversations,
-      messages: seeded.messages,
       currentUser: newUser,
       step: AuthStep.home,
       pendingPhone: null,
@@ -712,24 +705,7 @@ class AppController extends StateNotifier<AppState> {
         }
       });
 
-    _announcementsChannel = client.channel('public:announcements')
-      ..onPostgresChanges(
-        event: supabase.PostgresChangeEvent.insert,
-        schema: 'public',
-        table: 'announcements',
-        callback: _handleAnnouncementChange,
-      )
-      ..onPostgresChanges(
-        event: supabase.PostgresChangeEvent.update,
-        schema: 'public',
-        table: 'announcements',
-        callback: _handleAnnouncementChange,
-      )
-      ..subscribe((status, error) {
-        if (kDebugMode) {
-          debugPrint('📡 Canal announcements: $status ${error != null ? "- Error: $error" : ""}');
-        }
-      });
+      // Announcements disabled
 
     _contactsChannel = client.channel('public:contacts')
       ..onPostgresChanges(
@@ -787,12 +763,7 @@ class AppController extends StateNotifier<AppState> {
     unawaited(_refreshConversationsList());
   }
 
-  void _handleAnnouncementChange(supabase.PostgresChangePayload payload) {
-    if (kDebugMode) {
-      debugPrint('🔔 Cambio detectado en announcements: ${payload.eventType}');
-    }
-    unawaited(_refreshAnnouncements());
-  }
+  // Announcements disabled
 
   void _handleContactsChange(supabase.PostgresChangePayload payload) {
     if (kDebugMode) {
@@ -822,7 +793,12 @@ class AppController extends StateNotifier<AppState> {
       return existing;
     }
 
-    final contact = state.directory.firstWhere((user) => user.id == contactId);
+    final contactIndex = state.directory.indexWhere((user) => user.id == contactId);
+    if (contactIndex < 0) {
+      throw StateError('Contacto no encontrado en el directorio');
+    }
+    final contact = state.directory[contactIndex];
+    
     Conversation conversation;
     if (_conversationsRepository == null) {
       conversation = Conversation(
@@ -847,11 +823,6 @@ class AppController extends StateNotifier<AppState> {
 
     final updatedConversations = List<Conversation>.from(state.conversations)..add(conversation);
     state = state.copyWith(conversations: updatedConversations, errorMessage: null);
-
-    await sendMessage(
-      conversationId: conversation.id,
-      text: 'Hola ${contact.displayName.split(' ').first}, ¡gracias por conectar!',
-    );
     return conversation;
   }
 
@@ -979,15 +950,7 @@ class AppController extends StateNotifier<AppState> {
     }
   }
 
-  Future<void> _refreshAnnouncements() async {
-    if (_announcementsRepository == null) return;
-    try {
-      final announcements = await _announcementsRepository.fetchAnnouncements();
-      state = state.copyWith(announcements: announcements);
-    } catch (_) {
-      _setError('No se pudieron actualizar los avisos.');
-    }
-  }
+  // Announcements disabled
 
   Future<void> _refreshContactsDirectory() async {
     final current = state.currentUser;
@@ -1037,66 +1000,9 @@ class AppController extends StateNotifier<AppState> {
     );
   }
 
-  Future<void> acknowledgeAnnouncement(String announcementId) async {
-    final user = state.currentUser;
-    if (user == null) return;
-    if (_announcementsRepository != null) {
-      try {
-        await _announcementsRepository.acknowledgeAnnouncement(
-          announcementId: announcementId,
-          profileId: user.id,
-        );
-      } catch (_) {
-        _setError('No se pudo confirmar la lectura del aviso.');
-      }
-    }
-    final announcements = state.announcements
-        .map((announcement) => announcement.id == announcementId
-            ? announcement.copyWith(
-                acknowledgedBy: <String>{...announcement.acknowledgedBy, user.id},
-              )
-            : announcement)
-        .toList(growable: false);
-    state = state.copyWith(announcements: announcements);
-  }
+  // Announcements disabled
 
-  Future<void> publishAnnouncement({
-    required String title,
-    required String body,
-    String category = 'General',
-  }) async {
-    final user = state.currentUser;
-    if (user == null || !user.isProfessor) {
-      _setError('Solo profesores publican boletines.');
-      return;
-    }
-    Announcement announcement;
-    if (_announcementsRepository == null) {
-      announcement = Announcement(
-        id: _uuid.v4(),
-        title: title,
-        body: body,
-        category: category,
-        authorId: user.id,
-        createdAt: DateTime.now(),
-        acknowledgedBy: <String>{user.id},
-      );
-    } else {
-      try {
-        announcement = await _announcementsRepository.publishAnnouncement(
-          authorId: user.id,
-          title: title,
-          body: body,
-          category: category,
-        );
-      } catch (_) {
-        _setError('No se pudo publicar el aviso.');
-        return;
-      }
-    }
-    final announcements = List<Announcement>.from(state.announcements)..insert(0, announcement);
-    state = state.copyWith(announcements: announcements, errorMessage: null);
-  }
+  // Announcements disabled
 
   Future<void> updateProfile({
     String? displayName,
@@ -1206,7 +1112,6 @@ class AppController extends StateNotifier<AppState> {
     unawaited(_messagesChannel?.unsubscribe());
     unawaited(_conversationsChannel?.unsubscribe());
     unawaited(_participantsChannel?.unsubscribe());
-    unawaited(_announcementsChannel?.unsubscribe());
     unawaited(_contactsChannel?.unsubscribe());
     super.dispose();
   }

@@ -35,15 +35,6 @@ class _ChatsPageState extends ConsumerState<ChatsPage> {
             ),
           ],
         ),
-        actions: <Widget>[
-          IconButton(
-            tooltip: 'Silenciar/activar notificaciones',
-            onPressed: filtered.isEmpty
-                ? null
-                : () => ref.read(appControllerProvider.notifier).toggleMute(filtered.first.id),
-            icon: const Icon(Icons.notifications_active_outlined),
-          ),
-        ],
       ),
       body: DecoratedBox(
         decoration: AppDecorations.surfaceBackground,
@@ -59,20 +50,6 @@ class _ChatsPageState extends ConsumerState<ChatsPage> {
                 onChanged: (value) => setState(() => _query = value.trim()),
               ),
             ),
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                children: const <Widget>[
-                  _FilterChip(icon: Icons.chat_bubble_outline, label: 'Chats directos'),
-                  SizedBox(width: AppSpacing.sm),
-                  _FilterChip(icon: Icons.groups_2_outlined, label: 'Grupos docentes'),
-                  SizedBox(width: AppSpacing.sm),
-                  _FilterChip(icon: Icons.campaign_outlined, label: 'Avisos'),
-                ],
-              ),
-            ),
             const SizedBox(height: AppSpacing.sm),
             Expanded(
               child: filtered.isEmpty
@@ -86,6 +63,20 @@ class _ChatsPageState extends ConsumerState<ChatsPage> {
                         final lastMessage = conversation.lastMessage;
                         final subtitle = lastMessage?.body ?? 'Sin mensajes aún';
                         final time = lastMessage == null ? '' : DateFormat.Hm().format(lastMessage.timestamp);
+                        
+                                                // Calcular el título correcto para conversaciones directas
+                                                String displayTitle = conversation.title;
+                                                if (!conversation.isGroup && appState.currentUser != null) {
+                                                  final otherUserId = conversation.participantIds.firstWhere(
+                                                    (id) => id != appState.currentUser!.id,
+                                                    orElse: () => conversation.participantIds.first,
+                                                  );
+                                                  final otherUserIndex = appState.directory.indexWhere((user) => user.id == otherUserId);
+                                                  if (otherUserIndex >= 0) {
+                                                    displayTitle = appState.directory[otherUserIndex].displayName;
+                                                  }
+                                                }
+                        
                         return GestureDetector(
                           onTap: () => _openConversation(conversation),
                           child: Container(
@@ -107,18 +98,43 @@ class _ChatsPageState extends ConsumerState<ChatsPage> {
                                         children: <Widget>[
                                           Expanded(
                                             child: Text(
-                                              conversation.title,
+                                              displayTitle,
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .titleMedium
                                                   ?.copyWith(fontWeight: FontWeight.w600),
                                             ),
                                           ),
-                                          Text(time, style: Theme.of(context).textTheme.bodySmall),
+                                          if (time.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: AppSpacing.sm,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.brandSecondary.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(AppRadius.lg),
+                                              ),
+                                              child: Text(
+                                                time,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(color: AppColors.textMuted),
+                                              ),
+                                            ),
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+                                      Text(
+                                        subtitle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(color: AppColors.textMuted),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -178,15 +194,13 @@ class _ChatsPageState extends ConsumerState<ChatsPage> {
       orElse: () => conversation.participantIds.first,
     );
 
-    final otherUser = appState.directory.firstWhere(
-      (user) => user.id == otherUserId,
-      orElse: () => appState.directory.first,
-    );
+    final int idx = appState.directory.indexWhere((user) => user.id == otherUserId);
+    final otherUser = idx >= 0 ? appState.directory[idx] : null;
 
     // Si tiene foto de perfil, mostrarla
-    if (otherUser.avatarPath != null && otherUser.avatarPath!.isNotEmpty) {
-      final isNetworkImage = otherUser.avatarPath!.startsWith('http://') || 
-                              otherUser.avatarPath!.startsWith('https://');
+    if (otherUser != null && otherUser.avatarPath != null && otherUser.avatarPath!.isNotEmpty) {
+      final isNetworkImage = otherUser.avatarPath!.startsWith('http://') ||
+          otherUser.avatarPath!.startsWith('https://');
       
       return CircleAvatar(
         radius: 24,

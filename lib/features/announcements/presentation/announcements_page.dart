@@ -70,11 +70,7 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
                     announcement: announcement,
                     authorName: author.displayName,
                     acknowledged: acknowledged,
-                    onAcknowledge: currentUser == null
-                        ? null
-                        : () => ref
-                            .read(appControllerProvider.notifier)
-                            .acknowledgeAnnouncement(announcement.id),
+                    onAcknowledge: null,
                   ),
                 );
               },
@@ -128,11 +124,6 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
             FilledButton(
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
-                await ref.read(appControllerProvider.notifier).publishAnnouncement(
-                      title: titleController.text,
-                      body: bodyController.text,
-                      category: categoryController.text,
-                    );
                 if (context.mounted) {
                   Navigator.of(context).pop();
                 }

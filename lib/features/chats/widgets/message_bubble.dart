@@ -49,12 +49,12 @@ class MessageBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: alignment,
           children: <Widget>[
-            if (conversation.isGroup && !isMine)
+            if (conversation.isGroup && !isMine && sender != null)
               Text(
-                sender?.displayName ?? 'Contacto',
+                sender!.displayName,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
               ),
-            if (conversation.isGroup && !isMine)
+            if (conversation.isGroup && !isMine && sender != null)
               const SizedBox(height: AppSpacing.xs),
             _buildMessageBody(context, textColor),
             const SizedBox(height: AppSpacing.xs),
@@ -100,7 +100,7 @@ class MessageBubble extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            if (message.attachmentPath != null) _buildImagePreview(context),
+            if (message.attachmentPath != null) _buildAnimationPreview(context),
             if (message.body.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -202,6 +202,105 @@ class MessageBubble extends StatelessWidget {
                         color: Colors.grey.shade200,
                       ),
                       child: const Center(child: Text('Imagen adjunta')),
+                    ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimationPreview(BuildContext context) {
+    final path = message.attachmentPath;
+    if (path == null) return const SizedBox.shrink();
+    
+    // Determinar si es URL de red o archivo local
+    final isNetworkImage = path.startsWith('http://') || path.startsWith('https://');
+    
+    return GestureDetector(
+      onTap: () {
+        // Abrir visor de GIF en pantalla completa
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ImageViewerPage(
+              imagePath: path,
+              isNetworkImage: isNetworkImage,
+            ),
+          ),
+        );
+      },
+      child: Hero(
+        tag: 'gif_${message.id}',
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: isNetworkImage
+              ? Image.network(
+                  path,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        color: Colors.grey.shade200,
+                      ),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        color: Colors.grey.shade200,
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text('Error al cargar GIF'),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : File(path).existsSync()
+                  ? Image.file(
+                      File(path),
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        color: Colors.grey.shade200,
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Icon(Icons.gif_box, size: 48, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text('GIF adjunto'),
+                          ],
+                        ),
+                      ),
                     ),
         ),
       ),

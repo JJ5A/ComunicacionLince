@@ -71,17 +71,20 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
       );
     });
     final state = ref.watch(appControllerProvider);
-    final contacts = state.contactDirectory;
-    final filteredContacts = _filterContacts(contacts);
+    // Mostrar solo los contactos agregados
+    final allProfiles = state.contactDirectory;
+    final filteredContacts = _filterContacts(allProfiles);
     
     return Scaffold(
       appBar: AppBar(title: const Text('Contactos TecNM')),
       body: Stack(
         children: <Widget>[
-          DecoratedBox(
-            decoration: AppDecorations.surfaceBackground,
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+          SafeArea(
+            bottom: true,
+            child: DecoratedBox(
+              decoration: AppDecorations.surfaceBackground,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl),
               children: <Widget>[
             _AddContactCard(
               phoneController: _phoneController,
@@ -95,8 +98,8 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
-                Text('Mis contactos', style: Theme.of(context).textTheme.headlineSmall),
-                Text('${filteredContacts.length} de ${contacts.length}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+                Text('Personas', style: Theme.of(context).textTheme.headlineSmall),
+                Text('${filteredContacts.length} de ${allProfiles.length}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -138,7 +141,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            if (contacts.isEmpty)
+            if (allProfiles.isEmpty)
               Container(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: BoxDecoration(
@@ -152,7 +155,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(
-                        'Aún no tienes contactos. Usa los formularios para enviar invitaciones a tus compañeros y docentes.',
+                        'Aún no hay perfiles para mostrar. Pide a tus compañeros y docentes que completen su registro.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -202,6 +205,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                 ),
               ),
           ],
+              ),
             ),
           ),
           AppLoadingOverlay(visible: state.isLoading),
@@ -235,7 +239,7 @@ class _AddContactCard extends StatelessWidget {
           Text('Agregar contacto', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Busca por número telefónico. Si el usuario está registrado en Firebase, se agregará a tus contactos.',
+            'Busca por número telefónico. Si el usuario esta registrado se agregará a tus contactos.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -318,10 +322,7 @@ class _ContactTile extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          CircleAvatar(
-            backgroundColor: AppColors.brandPrimary.withValues(alpha: 0.1),
-            child: Text(contact.initials()),
-          ),
+          _ContactAvatar(contact: contact),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -340,6 +341,39 @@ class _ContactTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ContactAvatar extends StatelessWidget {
+  const _ContactAvatar({required this.contact});
+
+  final UserProfile contact;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = contact.avatarPath;
+    final hasImage = path != null && path.isNotEmpty;
+    final isNetwork = hasImage && (path!.startsWith('http://') || path.startsWith('https://'));
+
+    if (hasImage && isNetwork) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundImage: NetworkImage(path!),
+        backgroundColor: AppColors.brandPrimary.withValues(alpha: 0.1),
+      );
+    }
+    if (hasImage && !isNetwork) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundColor: AppColors.brandPrimary.withValues(alpha: 0.1),
+        child: const Icon(Icons.person, color: AppColors.brandPrimary),
+      );
+    }
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: AppColors.brandPrimary.withValues(alpha: 0.1),
+      child: Text(contact.initials()),
     );
   }
 }
